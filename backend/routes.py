@@ -51,3 +51,79 @@ def parse_json(data):
 ######################################################################
 # INSERT CODE HERE
 ######################################################################
+
+@app.route("/health")
+def health():
+    return jsonify(dict(status="OK"))
+
+# Next Create a Count commange to count the number of lyrics or songs?
+@app.route("/count")
+def count():
+    count = db.songs.count_documents({})
+
+    return {"The count is": count}, 200
+
+# Next Create a Flask Route that responds to the GET methods for the endpoint /song
+@app.route("/song", methods=["GET"])
+def song():
+    song_list = list(db.songs.find({}))
+    print(song_list[0])
+    return {"songs are as follows": parse_json(song_list)}, 200
+    #song_list = db.songs.find({})
+
+    #return {"The song list is": song_list}, 200
+
+# Next Vreate a Flask Route to post a song using the id
+@app.route("/song", methods=["POST"])
+def create_song():
+    # get data from the json body
+    song_in = request.json
+
+    print(song_in["id"])
+
+    # if the id is already there, return 303 with the URL for the resource
+    song = db.songs.find_one({"id": song_in["id"]})
+    if song:
+        return {
+            "Message": f"song with id {song_in['id']} already present"
+        }, 302
+
+    insert_id: InsertOneResult = db.songs.insert_one(song_in)
+
+    return {"inserted id": parse_json(insert_id.inserted_id)}, 201
+
+# Exercise 5: Create a Flask Method to PUT or update a song endpoint
+@app.route("/song/<int:id>", methods=["PUT"])
+def update_song(id):
+
+    song_upd = request.json
+
+    new_song = db.songs.find_one({"id": id})
+
+    if new_song == None:
+        return {"Message": "song not found"}, 404
+    
+    updated_data = {"$set": song_upd}
+
+    result = db.songs.update_one({"id": id}, updated_data)
+
+    if result.modified_count == 0:
+        return {"Message": "song found, but nothing updated"}, 200
+    else:
+        return parse_json(db.songs.find_one({"id": id})), 201
+
+# Exercise 6: Impletement the Delete/song endpoint
+@app.route("/song/<int:id>", methods=["DELETE"])
+def delete_song(id):
+    """This will delte the data with the given id. 
+    If the data is not found respond with a 404 message, song not found
+    Also report the deleted count if necessary
+    """
+    result = db.songs.delete_one({"id": id})
+    if result.deleted_count == 0:
+        return {"message": "song not found"}, 404
+    else:
+        return "", 204
+
+# Done.
+       
